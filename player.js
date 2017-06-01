@@ -1,7 +1,3 @@
-var visitedNodes = {};
-var rootNode;
-var currentPosition = {x: 0, y: 0};
-
 const DIR_U = "u";
 const DIR_D = "d";
 const DIR_L = "l";
@@ -32,8 +28,6 @@ function createNewPos(pos, dirCode) {
     }
 }
 function dirCodeBetweenNodes(fromNode, toNode) {
-    console.log("From " + fromNode.x + " " + fromNode.y + " TO " + toNode.x + " " + toNode.y);
-
     if(toNode.x - fromNode.x === 1) {
 	return DIR_R;
     }
@@ -49,50 +43,77 @@ function dirCodeBetweenNodes(fromNode, toNode) {
 }
 
 var visitedMap = {};
-function setWasVisited(pos) {
+function visit(pos) {
     visitedMap[pos.x + "_" + pos.y] = true;
 }
-function wasVisited(pos) {
-    return visitedMap[pos.x + "_" + pos.y];
+function hasNotYetBeenVisited(pos) {
+    return !visitedMap[pos.x + "_" + pos.y];
 }
 
 function visitNode(parentPos, currentPos) {
-    var foundEnd = false;
 
-    // Visit the node
-    setWasVisited(currentPos);
+  foundEnd = false;
 
-    // check for end
-    if (maze.isSolved()) {
-	foundEnd = true;
-    } else {
-	let availableMoves = maze.getAvailableDirections();
+  // Visit the node
+  visit(currentPos);
 
-	for (let code in availableMoves) {
-	    let currentDirection = availableMoves[code];
-            let newPos = createNewPos(currentPosition, code);
+  // check for end
+  foundEnd = maze.isSolved();
+  // If this is the end bail out early
+  if (foundEnd) {
+    return foundEnd
+  }
 
-	    console.log("Cur: " + currentPos.x + " " + currentPos.y + " CODE: " + code + " NewPos: " + newPos.x + " " + newPos.y);
+  // Get possible new positions
+  let availableMoves = maze.getAvailableDirections();
+  let rPos = createNewPos(currentPos, DIR_R);
+  let dPos = createNewPos(currentPos, DIR_D);
+  let lPos = createNewPos(currentPos, DIR_L);
+  let uPos = createNewPos(currentPos, DIR_U);
 
-	    if (currentDirection && !wasVisited(newPos)) {
-		// Move to node we are about to visit
-		maze[MOVE_FUNC[code]]();
+  if (availableMoves[DIR_R] && hasNotYetBeenVisited(rPos) && !foundEnd) {
+    console.log("Moving to NewPos: " + rPos.x + " " + rPos.y);
+    move(DIR_R);
+    foundEnd = visitNode(currentPos, rPos);
+  }
+  if (availableMoves[DIR_D] && hasNotYetBeenVisited(dPos) && !foundEnd) {
+    console.log("Moving to NewPos: " + dPos.x + " " + dPos.y);
+    move(DIR_D);
+    foundEnd = visitNode(currentPos, dPos);
+  }
+  if (availableMoves[DIR_L] && hasNotYetBeenVisited(lPos) && !foundEnd) {
+    console.log("Moving to NewPos: " + lPos.x + " " + lPos.y);
+    move(DIR_L);
+    foundEnd = visitNode(currentPos, lPos);
+  }
+  if (availableMoves[DIR_U] && hasNotYetBeenVisited(uPos) && !foundEnd) {
+    console.log("Moving to NewPos: " + uPos.x + " " + uPos.y);
+    move(DIR_U);
+    foundEnd = visitNode(currentPos, uPos);
+  }
 
-		foundEnd = visitNode(currentPos, newPos);
-		if (foundEnd) {
-		    break; // we found the end return
-		}
-	    }
-	}
-    }
+  if (!foundEnd && parentPos) {
+	   var dirCodeBack = dirCodeBetweenNodes(currentPos, parentPos);
+	   // Return to parent
+     console.log("Moving back");
+     move(dirCodeBack);
+   }
+   return foundEnd;
+}
 
-    if (!foundEnd && parentPos) {
-	var dirCodeBack = dirCodeBetweenNodes(currentPos, parentPos);
-	// Return to parent
-	maze[MOVE_FUNC[dirCodeBack]]();
-    }
-    return foundEnd;
-}    
+function move(code) {
+  if (code === "u") {
+    maze.moveUp();
+  } else if (code === "r") {
+    maze.moveRight();
+  } else if (code === "d") {
+    maze.moveDown();
+  } else if (code === "l") {
+    maze.moveLeft();
+  }
+}
 
+console.log("Starting at Pos: 0,0");
 var foundIt = visitNode(undefined, {x: 0, y:0});
 console.log(foundIt);
+maze.stop(foundIt);
