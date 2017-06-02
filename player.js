@@ -3,16 +3,30 @@ const DIR_D = "d";
 const DIR_L = "l";
 const DIR_R = "r";
 
-const MOVE_FUNC = {
-    'u': 'moveUp',
-    'd': 'moveDown',
-    'l': 'moveLeft',
-    'r': 'moveRight'
-};
+var visitedMap = {};
+var upEliminated = {};
+var firstDown = true;
+var foundRightWall = false;
+var width = undefined;
+
+console.log("Starting at Pos: 0,0");
+let initialPosition = {x: 0, y:0};
+visit(initialPosition);
+// Prevent going negative
+let invalidPosition = {x: -1, y:0};
+visit(invalidPosition);
+var foundIt = visitNode(undefined, initialPosition, undefined);
+console.log(foundIt);
+maze.stop(foundIt);
+
+function visit(pos) {
+    visitedMap[pos.x + "_" + pos.y] = true;
+}
 
 function addVector(a, b) {
     return {x: a.x + b.x, y: a.y + b.y};
 }
+
 function createNewPos(pos, dirCode) {
     if(dirCode === DIR_R) {
 	return addVector(pos, {x: 1, y: 0});
@@ -28,12 +42,12 @@ function createNewPos(pos, dirCode) {
     }
 }
 
-var visitedMap = {};
-function visit(pos) {
-    visitedMap[pos.x + "_" + pos.y] = true;
-}
 function hasNotYetBeenVisited(pos) {
     return !visitedMap[pos.x + "_" + pos.y];
+}
+
+function canCheckUp(pos) {
+    return !upEliminated[pos.x + "_" + pos.y];
 }
 
 function visitNode(parentPos, currentPos, backDirection) {
@@ -60,11 +74,21 @@ function visitNode(parentPos, currentPos, backDirection) {
   if (availableMoves[DIR_R] && hasNotYetBeenVisited(rPos) && !foundEnd) {
     console.log("Moving R to NewPos: " + rPos.x + " " + rPos.y);
     move(DIR_R);
+    if (rPos.x === width && !foundRightWall) {
+      foundRightWall = true;
+      upEliminated = visitedMap;
+    }
     foundEnd = visitNode(currentPos, rPos, DIR_L);
   }
   if (availableMoves[DIR_D] && hasNotYetBeenVisited(dPos) && !foundEnd) {
     console.log("Moving D to NewPos: " + dPos.x + " " + dPos.y);
     move(DIR_D);
+    // on first move down calculate the maze width
+    if (firstDown) {
+      width = calculateMazeWidth(currentPos);
+      firstDown = false;
+      console.log("Width = " + width);
+    }
     foundEnd = visitNode(currentPos, dPos, DIR_U);
   }
   if (availableMoves[DIR_L] && hasNotYetBeenVisited(lPos) && !foundEnd) {
@@ -72,7 +96,7 @@ function visitNode(parentPos, currentPos, backDirection) {
     move(DIR_L);
     foundEnd = visitNode(currentPos, lPos, DIR_R);
   }
-  if (availableMoves[DIR_U] && hasNotYetBeenVisited(uPos) && !foundEnd) {
+  if (availableMoves[DIR_U] && hasNotYetBeenVisited(uPos) && canCheckUp(currentPos) && !foundEnd) {
     console.log("Moving U to NewPos: " + uPos.x + " " + uPos.y);
     move(DIR_U);
     foundEnd = visitNode(currentPos, uPos, DIR_D);
@@ -85,24 +109,20 @@ function visitNode(parentPos, currentPos, backDirection) {
    return foundEnd;
 }
 
-function move(code) {
-  if (code === "u") {
+function move(direction) {
+  if (direction === "u") {
     maze.moveUp();
-  } else if (code === "r") {
+  } else if (direction === "r") {
     maze.moveRight();
-  } else if (code === "d") {
+  } else if (direction === "d") {
     maze.moveDown();
-  } else if (code === "l") {
+  } else if (direction === "l") {
     maze.moveLeft();
   }
 }
 
-console.log("Starting at Pos: 0,0");
-let initialPosition = {x: 0, y:0};
-visit(initialPosition);
-// Prevent going negative
-let invalidPosition = {x: -1, y:0};
-visit(invalidPosition);
-var foundIt = visitNode(undefined, initialPosition, undefined);
-console.log(foundIt);
-maze.stop(foundIt);
+function calculateMazeWidth(currentPosition) {
+  var index = maze.currentIdx();
+  var width = index - currentPosition.x - 1;
+  return width;
+}

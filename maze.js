@@ -158,7 +158,7 @@ class Maze {
     if (this.moves.length > playBackIdx + 1) {
       setTimeout(function() {
         that.playBackNextMove(playBackIdx + 1);
-      }, 300);
+      }, 100);
     }
   }
 
