@@ -279,7 +279,7 @@ function initializeMaze() {
 Math.seedrandom();
 
 if(!isNode) {
-    initializeMaze(parseInt(getURLParameter("seed")) || Math.floor(Math.random() * 100000), getURLParameter("height"), getURLParameter("width"));
+    initializeMaze();
 } else {
     module.exports = {
 	maze: maze,
