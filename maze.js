@@ -256,7 +256,7 @@ var maze = {};
 
 function initializeMaze() {
     Math.seedrandom();
-    window.seed = parseInt(getURLParameter("seed")) || Math.floor(Math.random() * 100000);
+    window.seed = getURLParameter("seed") || Math.floor(Math.random() * 100000);
     Math.seedrandom(window.seed);
 
     console.log("Using seed: " + window.seed);
