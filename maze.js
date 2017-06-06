@@ -1,3 +1,7 @@
+var isNode = (typeof module !== 'undefined' && module.exports);
+if(isNode) {
+    require('seedrandom');
+}
 
 var PROBABILITY = 0.6;
 
@@ -7,7 +11,10 @@ class Maze {
     this.height = parseInt(height, 10);
     this.width = parseInt(width, 10);
     this.createData();
-    this.parseMazeData();
+
+    if(!isNode)
+	this.parseMazeData();
+
     this.moves = [0];
     this.commitMove(0);
     this.playBackIdx = 1;
@@ -58,9 +65,9 @@ class Maze {
     var style = document.createElement('style');
     style.type = 'text/css';
 
-    var cellWidth = 100 / this.width * 0.8;
+    var cellWidth = 100 / this.width * 0.6;
     var cellHeight = 100 / this.width;
-    var borderWidth = 100 / this.width * 0.1;
+    var borderWidth = 100 / this.width * 0.2;
 
     style.innerHTML = '.node { width: ' + cellWidth + 'vw; height: ' + cellHeight + 'vw; border: ' + borderWidth + 'vw solid #DDD; }';
     style.innerHTML += ' .top { border-top: ' + borderWidth + 'vw solid #CCC; }';
@@ -122,7 +129,8 @@ class Maze {
   }
 
   commitMove(destinationIdx) {
-    console.log("MOVE " + this.moves.length + ": " + destinationIdx)
+      if(!isNode)
+	  console.log("MOVE " + this.moves.length + ": " + destinationIdx)
   }
 
   isAdjacent(destinationIdx) {
@@ -136,14 +144,15 @@ class Maze {
 
     if (destinationIdx === this.height * this.width - 1) {
       this.stop(true);
-      console.log("******************** SOLVED ********************")
+      if(!isNode)
+	  console.log("******************** SOLVED ********************")
     }
 
     return destinationIdx;
   }
 
   playBackNextMove(playBackIdx) {
-
+      
     if (playBackIdx > 0) {
       var currentIdx = this.moves[playBackIdx - 1];
       var currentNode = document.getElementById("" + currentIdx);
@@ -227,7 +236,8 @@ class Maze {
   }
 
   stop(solvable) {
-    this.playBackNextMove(0);
+      if(!isNode)
+	  this.playBackNextMove(0);
   }
 
   isSolved() {
@@ -245,7 +255,11 @@ function getURLParameter(name) {
 var maze = {};
 
 function initializeMaze() {
-  Math.seedrandom(getURLParameter("seed"));
+    Math.seedrandom();
+    window.seed = parseInt(getURLParameter("seed")) || Math.floor(Math.random() * 100000);
+    Math.seedrandom(window.seed);
+
+    console.log("Using seed: " + window.seed);
   var height = getURLParameter("height");
   var width = getURLParameter("width");
   var _maze = new Maze(height, width);
@@ -259,6 +273,17 @@ function initializeMaze() {
   maze.stop                   = _maze.stop.bind(_maze);
   maze.idxForMove             = _maze.idxForMove.bind(_maze);
   maze.isSolved               = _maze.isSolved.bind(_maze);
+  maze.moveCount              = function() { return _maze.moves.length; };
 }
 
-initializeMaze();
+Math.seedrandom();
+
+if(!isNode) {
+    initializeMaze(parseInt(getURLParameter("seed")) || Math.floor(Math.random() * 100000), getURLParameter("height"), getURLParameter("width"));
+} else {
+    module.exports = {
+	maze: maze,
+	initializeMaze: initializeMaze,
+	getURLParameter: getURLParameter,
+    }
+}

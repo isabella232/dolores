@@ -1,0 +1,6 @@
+49519 - 1225 moves 3.5 sec
+86412 - 521 moves 0.54 sec
+37506 - 1024 moves 3.01 sec
+30431 - 848 moves 1.625 sec
+74289 - 647 moves 
+1599 - 8415 moves

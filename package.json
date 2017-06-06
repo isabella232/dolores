@@ -1,0 +1,18 @@
+{
+  "name": "maze",
+  "version": "1.0.0",
+  "description": "You find yourself as an orange square, in a series of corridors that turn left then right then back to the left. It's a never ending maze. How will you find your way out? Is it even possible? The maze seems to go on forever and ever.",
+  "main": "genetic.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@jreid.ddns.net:SkookumMaze.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "seedrandom": "^2.4.3"
+  }
+}
