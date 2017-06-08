@@ -7,7 +7,9 @@ var visitedMap = {};
 var upEliminated = {};
 var firstDown = true;
 var foundRightWall = false;
+var foundBottomLeft = false;
 var width = undefined;
+var maxY = 0;
 
 console.log("Starting at Pos: 0,0");
 let initialPosition = {x: 0, y:0};
@@ -60,7 +62,7 @@ function visitNode(parentPos, currentPos, backDirection) {
   // check for end
   foundEnd = maze.isSolved();
   // If this is the end bail out early
-  if (foundEnd) {
+  if (foundEnd || foundBottomLeft) {
     return foundEnd
   }
 
@@ -76,7 +78,7 @@ function visitNode(parentPos, currentPos, backDirection) {
     move(DIR_R);
     if (rPos.x === width && !foundRightWall) {
       foundRightWall = true;
-      upEliminated = visitedMap;
+      upEliminated = JSON.parse(JSON.stringify(visitedMap));
     }
     foundEnd = visitNode(currentPos, rPos, DIR_L);
   }
@@ -89,6 +91,12 @@ function visitNode(parentPos, currentPos, backDirection) {
       firstDown = false;
       console.log("Width = " + width);
     }
+
+    if (dPos.y > maxY) {
+      maxY = dPos.y;
+      console.log("MayY = " + maxY);
+    }
+
     foundEnd = visitNode(currentPos, dPos, DIR_U);
   }
   if (availableMoves[DIR_L] && hasNotYetBeenVisited(lPos) && !foundEnd) {
@@ -102,9 +110,14 @@ function visitNode(parentPos, currentPos, backDirection) {
     foundEnd = visitNode(currentPos, uPos, DIR_D);
   }
 
-  if (!foundEnd && parentPos && backDirection) {
+  if (!foundEnd && parentPos && backDirection && !foundBottomLeft) {
+    if (currentPos.x === 0 && currentPos.y === maxY) {
+      console.log("Found Bottom Right")
+      foundBottomLeft = true;
+    } else {
      console.log("Moving back " + backDirection);
      move(backDirection);
+    }
    }
    return foundEnd;
 }
