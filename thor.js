@@ -1,10 +1,3 @@
-var isNode = (typeof module !== 'undefined' && module.exports);
-if(isNode) {
-    let _maze = require('./maze.js');
-    maze = _maze.maze;
-    getURLParameter = _maze.getURLParameter;
-}
-
 var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIST = -2, kill = 0) {
     function vector_add(a, b) {
 	return {x: a.x + b.x, y: a.y + b.y};
@@ -75,6 +68,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	// Our current best guess on the map size
 	let knownWalkableWidth = 1;
 	let knownWalkableHeight = 1;
+	let widthWasSet = false;
 
 	// Get data at x,y if not found return CELL_CODE_UNKNOWN
 	function getData(loc) {
@@ -138,13 +132,16 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 
 	// Check for a horizontal wall starting at loc, long enough to guess the bottom of the map
 	this.checkForBottom = function(walkableLoc) {
+	    let startLoc = vector_scale(walkableLoc, 2);
+
+	    // If checking from higher up
 	    if(walkableLoc.y > knownWalkableHeight) {
 		return false;
 	    }
 
 	    const MOVE_LEFT = vector_scale(VEC_L, 2);
 	    const MOVE_RIGHT = vector_scale(VEC_R, 2);
-	    const MAX_NATURAL_LENGTH = 15; // The max length of a wall before it's probably the boundary
+	    const MAX_NATURAL_LENGTH = widthWasSet ? Math.min(knownWalkableWidth, 20) : 20; // The max length of a wall before it's probably the boundary
 	    const loc = vector_scale(walkableLoc, 2);
 	    let len = 0;
 
@@ -180,6 +177,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    checkLoc = leftExtent; //vector_add(leftExtent, MOVE_LEFT);
 	    while(checkLoc.x > 0 && !floodBottom(checkLoc) && len < MAX_NATURAL_LENGTH) {
 		while(getData(vector_add(checkLoc, VEC_D)) !== DATA_CODE_WALL && checkLoc.x > 0) {
+		    len++;
 		    checkLoc = vector_add(checkLoc, MOVE_LEFT);
 		}
 
@@ -198,6 +196,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    checkLoc = rightExtent; //vector_add(rightExtent, MOVE_RIGHT);
             while(checkLoc.x < knownWalkableWidth*2 && !floodBottom(checkLoc) && len < MAX_NATURAL_LENGTH) {
                 while(getData(vector_add(checkLoc, VEC_D)) !== DATA_CODE_WALL && checkLoc.x < knownWalkableWidth*2) {
+		    len++;
                     checkLoc = vector_add(checkLoc, MOVE_RIGHT);
                 }
 
@@ -219,6 +218,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	}
 
 	this.setKnownWidth = function(walkableWidth) {
+	    widthWasSet = true;
 	    if(knownWalkableWidth < walkableWidth) {
 		knownWalkableWidth = walkableWidth;
 	    }
@@ -405,7 +405,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
     // Returns a list of moves to make
     // Undefined means there are no more moves
     var getBestMove = function(mazeData, pos, exitKnown) {
-	const maxFloodDist = exitKnown ? 75 : 25;
+	const maxFloodDist = exitKnown ? 75 : 50;
 	var weightedSpace = floodFill(pos, function (fillLoc, dist) {
 	    // Ignore things too many moves away
 	    if(dist > maxFloodDist) {
@@ -575,7 +575,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    let isSolved = maze.isSolved();
 	    
 	    // apiData is undefined when we are done
-	    if(!isSolved || apiData) {
+	    if(!isSolved && apiData) {
 		mazeData.addApiData(pos, apiData);
 	    } else {
 		return false;
@@ -585,9 +585,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	// Change tactics if we think we found the bottom
 	if(mazeData.checkForBottom(pos)) {
 	    exitKnown = true;
-	    
-	    if(!isNode)
-		console.log("EXIT IS GUESSED: " + mazeData.getKnownSize().x + "," + mazeData.getKnownSize().y);
+	    console.log("EXIT IS GUESSED: " + mazeData.getKnownSize().x + "," + mazeData.getKnownSize().y);
 	}
 	
 	return true;
@@ -600,15 +598,14 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	}
     } else {
 	while(main()) {}
+
+	console.log(maze.isSolved() ? "Solved!" : "Not Solvable!");
     }
     
-    if(!isNode)
-	render(mazeData);
+    render(mazeData);
 };
 
-if(!isNode){
-    thor(3.4383222646045457,-1.127262481256922,6.413781069944205,-7.411768777532894,-3.1944159216664607);
-    //    thor(3.4583222646045453,-1.087262481256922,6.533781069944203,-7.451768777532894,-3.274415921666459);
-} else {
-    module.exports = thor;
-}
+thor(3.4383222646045457,-1.127262481256922,6.413781069944205,-7.411768777532894,-3.1944159216664607);
+//thor(3.4583222646045453,-1.087262481256922,6.533781069944203,-7.451768777532894,-3.274415921666459);
+//thor(4.546255267106444,3.7008902138085933,1.4401657689541947,-8.67564593499125,-2.699145577805732);
+//thor();
