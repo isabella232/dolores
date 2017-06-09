@@ -613,7 +613,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	console.log(maze.isSolved() ? "Solved!" : "Not Solvable!");
     }
     
-    render(mazeData);
+    //render(mazeData);
 };
 
 thor(3.4383222646045457,-1.127262481256922,6.413781069944205,-7.411768777532894,-3.1944159216664607);
