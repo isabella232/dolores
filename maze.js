@@ -1,5 +1,6 @@
 
 var PROBABILITY = 0.6;
+var speed = 100;
 
 class Maze {
   constructor(height = 50, width = 100) {
@@ -158,7 +159,7 @@ class Maze {
     if (this.moves.length > playBackIdx + 1) {
       setTimeout(function() {
         that.playBackNextMove(playBackIdx + 1);
-      }, 300);
+      }, speed);
     }
   }
 
@@ -248,6 +249,10 @@ function initializeMaze() {
   Math.seedrandom(getURLParameter("seed"));
   var height = getURLParameter("height");
   var width = getURLParameter("width");
+  var replaySpeed = getURLParameter("speed");
+  if (replaySpeed) {
+    speed = replaySpeed;
+  }
   var _maze = new Maze(height, width);
 
   maze.getAvailableDirections = _maze.getAvailableDirections.bind(_maze);
