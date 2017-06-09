@@ -1,4 +1,5 @@
 var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIST = -2, kill = 0) {
+    // Using a `class` to represent vectors more than doubled the execution time
     function vector_add(a, b) {
 	return {x: a.x + b.x, y: a.y + b.y};
     }
@@ -21,16 +22,19 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	return {x:x, y:y};
     }
 	
+    // Constants for all directions, makes it easy to just add current position and which way you want to go
     const VEC_U = vector_new(0, -1);
     const VEC_D = vector_new(0, 1);
     const VEC_R = vector_new(1, 0);
     const VEC_L = vector_new(-1, 0);
 
+    // The data values to store in our internal maze representation
     const DATA_CODE_UNKNOWN = 5;
     const DATA_CODE_FLOOR = 6;
     const DATA_CODE_WALL = 7;
     const DATA_CODE_LOCKED = 8;
 
+    // Constants that the maze builder uses
     const CELL_CODE_UP = "u";
     const CELL_CODE_DOWN = "d";
     const CELL_CODE_LEFT = "l";
@@ -50,6 +54,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	})();
 
     // Dictionary of code => cssClass
+    // For debug renderer
     const CELL_CODE_CSS_MAP = (function() {
             let result = {};
 
@@ -61,6 +66,13 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
             return result;
         })();
 
+    // MazeData is a class used to hold a representation of the maze
+    // based on what the runner has discovered so far
+    //
+    // Uses a 2d array to store all positions
+    // the array is double the size of the maze so that neighboring tiles are the "walls"
+    //
+    // It is also dynamically allocated since we do not know the size of the maze at the start
     function MazeData(rootLoc, rootData){
 	// data is dynamically allocated array
 	let data = [];
@@ -93,6 +105,10 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    data[loc.x][loc.y] = code;
 	}
 
+	// Starting at a position that is on the "bottom"
+	// Flood fill all "unknown" spaces
+	// Stop if the space is filled, or if an unexplored "door" is found
+	// This allows us to determine if a region is an island of unreachable space
 	function floodBottom(startPos) {
 	    let floodFailed = false;
 	    startPos = {x: Math.floor(startPos.x/2), y: Math.floor(startPos.y/2)};
@@ -131,12 +147,15 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	}
 
 	// Check for a horizontal wall starting at loc, long enough to guess the bottom of the map
+	// Since the maze is random noise, very long continous walls are uncommon
+	// We must account for unreachable gaps along the bottom
 	this.checkForBottom = function(walkableLoc) {
 	    const MOVE_LEFT = vector_scale(VEC_L, 2);
             const MOVE_RIGHT = vector_scale(VEC_R, 2);
 	    let startLoc = vector_scale(walkableLoc, 2);
 
 	    // If checking from higher up
+	    // Then move down and start there
 	    if(walkableLoc.y < knownWalkableHeight) {
 		startLoc.y = knownWalkableHeight*2;
 
@@ -152,7 +171,8 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 		}
 	    }
 
-	    const MAX_NATURAL_LENGTH = widthWasSet ? Math.min(knownWalkableWidth, 20) : 20; // The max length of a wall before it's probably the boundary
+	    // The max length of a wall before it's probably the boundary 
+	    const MAX_NATURAL_LENGTH = widthWasSet ? Math.min(knownWalkableWidth, 20) : 20;
 	    const loc = startLoc; 
 	    let len = 0;
 
@@ -224,10 +244,12 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    return false;
 	}
 	
+	// Get the size of the map based on explored/calculated extents
 	this.getKnownSize = function() {
 	    return vector_new(knownWalkableWidth, knownWalkableHeight);
 	}
 
+	// Allow runner to manually set the width
 	this.setKnownWidth = function(walkableWidth) {
 	    widthWasSet = true;
 	    if(knownWalkableWidth < walkableWidth) {
@@ -235,6 +257,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    }
 	}
 
+	// DEBUG METHOD
 	// Create dom elements to debug maze data
 	// Should look like the original maze
 	this.buildDom = function(rootNode, walkableWidth, walkableHeight) {
@@ -299,7 +322,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 		code = DATA_CODE_WALL;
 	    }
 	    setData(vector_add(loc, VEC_U), code);
-
+	    
 	    if(apiData[CELL_CODE_DOWN]) {
 		code = DATA_CODE_FLOOR;
 	    } else {
@@ -322,7 +345,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    setData(vector_add(loc, VEC_R), code);
 	}
 
-	// Returns true if you can move in dir from loc
+	// Returns true if you can move in dir from walkableLoc
 	this.canMove = function(walkableFromLoc, dir) {
 	    const dataLoc = vector_scale(walkableFromLoc, 2);
 	    return getData(vector_add(dataLoc, dir)) === DATA_CODE_FLOOR;
@@ -354,9 +377,11 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    return allowed;
 	}
 	
+	// Init the maze data with the starting location
 	this.addApiData(rootLoc, rootData);
     };
 
+    // Search stack of vectors for point
     function _searchResultStack(resultStack, point) {
 	for(var i = 0, len = resultStack.length; i < len; i++) {
 	    if(resultStack[i].loc.x === point.x && resultStack[i].loc.y === point.y) {
@@ -369,6 +394,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
     
     // Given a function getNeighbors, that takes (Vector, Dist) and returns the Vectors that can be flooded to
     // This fucntion will return a list of points with their move distance
+    // And a list of "leaf" nodes that were found
     var floodFill = function(startPoint, getNeighbors, isLeaf = undefined) {
 	let searchStack = [{loc: startPoint, dist:0, prev:null}];
 	let searchStackIdx = 0;
@@ -377,7 +403,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	let leafStack = [];
 	
 	while(searchStackIdx > -1) {
-	    // POP
+	    // POP - but do it faster than .pop()
 	    const curSearch = searchStack[searchStackIdx];
 	    searchStackIdx--;
 	    
@@ -399,7 +425,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 
 	    const foundCells = getNeighbors(curSearch.loc, curSearch.dist);
 	    for(let i = 0, len = foundCells.length; i < len; i++) {
-		// PUSH
+		// PUSH - but faster than .push()
 		searchStackIdx++;
 		searchStack[searchStackIdx] = {loc:foundCells[i], dist:curSearch.dist+1, prev:curSearch};
 	    }
@@ -416,6 +442,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
     // Returns a list of moves to make
     // Undefined means there are no more moves
     var getBestMove = function(mazeData, pos, exitKnown) {
+	// First get a list of possible moves and their distances
 	const maxFloodDist = exitKnown ? 75 : 50;
 	var weightedSpace = floodFill(pos, function (fillLoc, dist) {
 	    // Ignore things too many moves away
@@ -501,6 +528,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    return undefined;
 	}
 
+	// The diagonal is always from start to the known extents of the maze
 	const diagLine = mazeData.getKnownSize();
 
 	// Find the lowest space
@@ -510,9 +538,14 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    const leafLoc = weightedSpace.map[leafIdx].loc;
 	    let dist;
 
+	    // Change the weight function if the exit is "known"
 	    if(exitKnown) {
+
+		// If known the weight for a move is the (move dist) + (distance to exit)
 		dist = weightedSpace.map[leafIdx].dist*10 + vector_dist(diagLine, leafLoc) * 5;
 	    } else {
+
+		// Normal weights are [Backtracking] [distance from diagonal] [distance from right side] [y position] [distance from start]
 		dist = weightedSpace.map[leafIdx].dist * W_BACKTRACK + distanceLinePoint(diagLine, leafLoc) * W_DIAG + (diagLine.x - leafLoc.x) * W_HORIZ + leafLoc.y * W_VERT + vector_mag(leafLoc) * W_DIST;
 	    }
 
@@ -523,6 +556,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	}
 
 	// Convert the lowest space into a move path
+	// by following the parent nodes starting from the leaf
 	const movePath = []
 	let prev = lowestSpace;
 	while(prev) {
@@ -533,7 +567,8 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	return movePath;
     }
 
-
+    // DEBUG
+    // Render the internal maze
     function render(mazeData) {
 	let DEBUG_width = getURLParameter("width") || 50;
 	let DEBUG_height = getURLParameter("height") || 100;
@@ -574,6 +609,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    if(dir.x === -1)
 		maze.moveLeft();
 	    if(dir.y === 1) {
+		// When moving down use current index to calculate the width
 		const idx = maze.currentIdx();
 		maze.moveDown();
 		mazeData.setKnownWidth(maze.currentIdx() - idx - 1);
@@ -581,6 +617,8 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    if(dir.y === -1)
 		maze.moveUp();
 	    
+	    // Move our position marker
+	    // Get new data from maze generator
 	    pos = vector_add(pos, dir);
 	    let apiData = maze.getAvailableDirections();
 	    let isSolved = maze.isSolved();
@@ -608,6 +646,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    count++;
 	}
     } else {
+	// Continue until maze returns no moves
 	while(main()) {}
 
 	console.log(maze.isSolved() ? "Solved!" : "Not Solvable!");
@@ -616,6 +655,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
     //render(mazeData);
 };
 
+// The GA came up with some weights
 thor(3.4383222646045457,-1.127262481256922,6.413781069944205,-7.411768777532894,-3.1944159216664607);
 //thor(3.4583222646045453,-1.087262481256922,6.533781069944203,-7.451768777532894,-3.274415921666459);
 //thor(4.546255267106444,3.7008902138085933,1.4401657689541947,-8.67564593499125,-2.699145577805732);
