@@ -98,7 +98,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    startPos = {x: Math.floor(startPos.x/2), y: Math.floor(startPos.y/2)};
 
 	    floodFill(startPos, function (fillLoc, dist) {
-		    if(dist > 10 || mazeData.getAvailableDirections(fillLoc).length > 0) {
+		    if(dist > 250 || mazeData.getAvailableDirections(fillLoc).length > 0) {
 			floodFailed = true;
 		    }
 
@@ -132,17 +132,28 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 
 	// Check for a horizontal wall starting at loc, long enough to guess the bottom of the map
 	this.checkForBottom = function(walkableLoc) {
+	    const MOVE_LEFT = vector_scale(VEC_L, 2);
+            const MOVE_RIGHT = vector_scale(VEC_R, 2);
 	    let startLoc = vector_scale(walkableLoc, 2);
 
 	    // If checking from higher up
-	    if(walkableLoc.y > knownWalkableHeight) {
-		return false;
+	    if(walkableLoc.y < knownWalkableHeight) {
+		startLoc.y = knownWalkableHeight*2;
+
+		// If no wall below check for gap
+		if(getData(vector_add(startLoc, VEC_D)) !== DATA_CODE_WALL) {
+		    if(!floodBottom(startLoc)) {
+			while(getData(vector_add(startLoc, VEC_D)) !== DATA_CODE_WALL && startLoc.x >= -1) {
+			    startLoc = vector_add(startLoc, MOVE_LEFT);
+			}
+		    } else {
+			return false;
+		    }
+		}
 	    }
 
-	    const MOVE_LEFT = vector_scale(VEC_L, 2);
-	    const MOVE_RIGHT = vector_scale(VEC_R, 2);
 	    const MAX_NATURAL_LENGTH = widthWasSet ? Math.min(knownWalkableWidth, 20) : 20; // The max length of a wall before it's probably the boundary
-	    const loc = vector_scale(walkableLoc, 2);
+	    const loc = startLoc; 
 	    let len = 0;
 
 	    // Check start
@@ -154,7 +165,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 
 	    // Check left
 	    let checkLoc = vector_add(loc, MOVE_LEFT);
-	    while(getData(vector_add(checkLoc, VEC_D)) === DATA_CODE_WALL && checkLoc.x > 0 && len < MAX_NATURAL_LENGTH) {
+	    while(getData(vector_add(checkLoc, VEC_D)) === DATA_CODE_WALL && checkLoc.x >= 0 && len < MAX_NATURAL_LENGTH) {
 		len++;
 		checkLoc = vector_add(checkLoc, MOVE_LEFT);
 	    }
@@ -162,7 +173,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 
 	    // Check right
 	    checkLoc = vector_add(loc, MOVE_RIGHT);
-	    while(getData(vector_add(checkLoc, VEC_D)) === DATA_CODE_WALL && checkLoc.x < knownWalkableWidth*2 && len < MAX_NATURAL_LENGTH) {
+	    while(getData(vector_add(checkLoc, VEC_D)) === DATA_CODE_WALL && checkLoc.x <= knownWalkableWidth*2 && len < MAX_NATURAL_LENGTH) {
                 len++;
 		checkLoc = vector_add(checkLoc, MOVE_RIGHT);
             }
@@ -176,12 +187,12 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    // Try to hop gap left
 	    checkLoc = leftExtent; //vector_add(leftExtent, MOVE_LEFT);
 	    while(checkLoc.x > 0 && !floodBottom(checkLoc) && len < MAX_NATURAL_LENGTH) {
-		while(getData(vector_add(checkLoc, VEC_D)) !== DATA_CODE_WALL && checkLoc.x > 0) {
+		while(getData(vector_add(checkLoc, VEC_D)) !== DATA_CODE_WALL && checkLoc.x >= 0) {
 		    len++;
 		    checkLoc = vector_add(checkLoc, MOVE_LEFT);
 		}
 
-		while(getData(vector_add(checkLoc, VEC_D)) === DATA_CODE_WALL && checkLoc.x > 0 && len < MAX_NATURAL_LENGTH) {
+		while(getData(vector_add(checkLoc, VEC_D)) === DATA_CODE_WALL && checkLoc.x >= 0 && len < MAX_NATURAL_LENGTH) {
 		    len++;
 		    checkLoc = vector_add(checkLoc, MOVE_LEFT);
 		}
@@ -195,12 +206,12 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	    // Try to hop gap right
 	    checkLoc = rightExtent; //vector_add(rightExtent, MOVE_RIGHT);
             while(checkLoc.x < knownWalkableWidth*2 && !floodBottom(checkLoc) && len < MAX_NATURAL_LENGTH) {
-                while(getData(vector_add(checkLoc, VEC_D)) !== DATA_CODE_WALL && checkLoc.x < knownWalkableWidth*2) {
+                while(getData(vector_add(checkLoc, VEC_D)) !== DATA_CODE_WALL && checkLoc.x <= knownWalkableWidth*2) {
 		    len++;
                     checkLoc = vector_add(checkLoc, MOVE_RIGHT);
                 }
 
-                while(getData(vector_add(checkLoc, VEC_D)) === DATA_CODE_WALL && checkLoc.x < knownWalkableWidth*2 && len < MAX_NATURAL_LENGTH) {
+                while(getData(vector_add(checkLoc, VEC_D)) === DATA_CODE_WALL && checkLoc.x <= knownWalkableWidth*2 && len < MAX_NATURAL_LENGTH) {
                     len++;
                     checkLoc = vector_add(checkLoc, MOVE_RIGHT);
                 }
@@ -528,7 +539,7 @@ var thor = function(W_BACKTRACK = 2, W_DIAG = 4, W_HORIZ = 0, W_VERT = -2, W_DIS
 	let DEBUG_height = getURLParameter("height") || 100;
 	let el = document.getElementById("debug");
 	el.innerHTML = "";
-	mazeData.buildDom(el, DEBUG_height, DEBUG_width);
+	mazeData.buildDom(el, DEBUG_width, DEBUG_height);
 	
 	try {
 	document.getElementById(pos.x + "_" + pos.y).className += " current";
